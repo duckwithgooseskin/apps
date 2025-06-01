@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML Code Runner</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/monokai.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/css/css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/htmlmixed/htmlmixed.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+            gap: 1px;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .editor-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 10px 0 0 10px;
+        }
+
+        .preview-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: white;
+            border-radius: 0 10px 10px 0;
+            overflow: hidden;
+        }
+
+        .header {
+            padding: 15px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            justify-content: between;
+            align-items: center;
+        }
+
+        .editor-panel .header {
+            color: white;
+        }
+
+        .preview-panel .header {
+            background: #f8f9fa;
+            color: #333;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        h2 {
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .icon {
+            width: 20px;
+            height: 20px;
+            display: inline-block;
+        }
+
+        .editor-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        .CodeMirror {
+            height: 100% !important;
+            font-size: 14px;
+            line-height: 1.5;
+            border: none;
+        }
+
+        .CodeMirror-scroll {
+            overflow: auto !important;
+        }
+
+        .CodeMirror-scrollbar-filler, .CodeMirror-gutter-filler {
+            background: transparent;
+        }
+
+        .preview-frame {
+            flex: 1;
+            border: none;
+            background: white;
+        }
+
+        .controls {
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(45deg, #ee5a24, #ff6b6b);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .auto-run-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: white;
+            font-size: 14px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 40px;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .toggle-switch.active {
+            background: #4CAF50;
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 16px;
+            height: 16px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s ease;
+        }
+
+        .toggle-switch.active::after {
+            transform: translateX(20px);
+        }
+
+        .status {
+            margin-left: auto;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 12px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+            
+            .editor-panel, .preview-panel {
+                border-radius: 0;
+            }
+            
+            .controls {
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="editor-panel">
+            <div class="header">
+                <h2>
+                    <span class="icon">📝</span>
+                    Code Editor
+                </h2>
+            </div>
+            <div class="editor-container">
+                <textarea id="code-editor"><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Code</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(45deg, #ff9a9e, #fecfef);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 500px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 2.5em;
+        }
+        
+        p {
+            color: #666;
+            font-size: 1.2em;
+            margin-bottom: 30px;
+        }
+        
+        .btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+        
+        .btn:hover {
+            transform: translateY(-3px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Welcome!</h1>
+        <p>Start coding and see your changes live!</p>
+        <button class="btn" onclick="showAlert()">Click Me!</button>
+    </div>
+    
+    <script>
+        function showAlert() {
+            alert('Hello from your HTML Code Runner! 🎉');
+        }
+        
+        // Add some dynamic content
+        setInterval(() => {
+            const colors = ['#ff9a9e', '#fecfef', '#a8edea', '#fed6e3'];
+            const randomColor = colors[Math.floor(Math.random() * colors.length)];
+            document.body.style.background = `linear-gradient(45deg, ${randomColor}, #fecfef)`;
+        }, 3000);
+    </script>
+</body>
+</html></textarea>
+            </div>
+            <div class="controls">
+                <button class="btn btn-primary" id="run-btn">
+                    <span>▶️</span> Run Code
+                </button>
+                <button class="btn btn-secondary" id="clear-btn">
+                    <span>🗑️</span> Clear
+                </button>
+                <div class="auto-run-toggle">
+                    <span>Auto-run</span>
+                    <div class="toggle-switch active" id="auto-run-toggle"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="preview-panel">
+            <div class="header">
+                <h2>
+                    <span class="icon">🖥️</span>
+                    Live Preview
+                </h2>
+            </div>
+            <iframe id="preview-frame" class="preview-frame"></iframe>
+        </div>
+    </div>
+
+    <script>
+        let editor;
+        let autoRun = true;
+        let runTimeout;
+
+        // Initialize CodeMirror
+        function initializeEditor() {
+            const textarea = document.getElementById('code-editor');
+            editor = CodeMirror.fromTextArea(textarea, {
+                mode: 'htmlmixed',
+                theme: 'monokai',
+                lineNumbers: true,
+                autoCloseTags: true,
+                autoCloseBrackets: true,
+                matchBrackets: true,
+                indentUnit: 2,
+                tabSize: 2,
+                lineWrapping: true,
+                foldGutter: true,
+                gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter']
+            });
+
+            // Auto-run on change
+            editor.on('change', () => {
+                if (autoRun) {
+                    clearTimeout(runTimeout);
+                    runTimeout = setTimeout(runCode, 500);
+                    updateStatus('Typing...');
+                }
+            });
+
+            // Initial run
+            runCode();
+        }
+
+        // Run the code
+        function runCode() {
+            const code = editor.getValue();
+            const previewFrame = document.getElementById('preview-frame');
+            
+            try {
+                // Create a blob URL for the HTML content
+                const blob = new Blob([code], { type: 'text/html' });
+                const url = URL.createObjectURL(blob);
+                previewFrame.src = url;
+                updateStatus('Code executed successfully ✅');
+                
+                // Clean up the previous blob URL
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+            } catch (error) {
+                updateStatus('Error: ' + error.message + ' ❌');
+            }
+        }
+
+        // Clear the editor
+        function clearEditor() {
+            editor.setValue('<!DOCTYPE html>\n<html>\n<head>\n    <title>New Document</title>\n</head>\n<body>\n    <h1>Hello World!</h1>\n</body>\n</html>');
+            updateStatus('Editor cleared 🗑️');
+        }
+
+        // Toggle auto-run
+        function toggleAutoRun() {
+            autoRun = !autoRun;
+            const toggle = document.getElementById('auto-run-toggle');
+            toggle.classList.toggle('active', autoRun);
+            updateStatus(autoRun ? 'Auto-run enabled ⚡' : 'Auto-run disabled ⏸️');
+        }
+
+        // Update status
+        function updateStatus(message) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            setTimeout(() => {
+                if (status.textContent === message) {
+                    status.textContent = 'Ready';
+                }
+            }, 2000);
+        }
+
+        // Event listeners
+        document.getElementById('run-btn').addEventListener('click', runCode);
+        document.getElementById('clear-btn').addEventListener('click', clearEditor);
+        document.getElementById('auto-run-toggle').addEventListener('click', toggleAutoRun);
+
+        // Initialize when DOM is loaded
+        document.addEventListener('DOMContentLoaded', initializeEditor);
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            if (editor) {
+                setTimeout(() => {
+                    editor.refresh();
+                }, 100);
+            }
+        });
+
+        // Fix scrolling issues
+        window.addEventListener('load', () => {
+            if (editor) {
+                setTimeout(() => {
+                    editor.refresh();
+                    editor.focus();
+                }, 200);
+            }
+        });
+    </script>
+</body>
+</html>
